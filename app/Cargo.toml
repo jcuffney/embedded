@@ -19,3 +19,20 @@ embassy-time = "0.5.0"
 embedded-hal = "1.0"
 reqwless     = { version = "0.14.0", default-features = false, features = ["log"] }
 log          = "0.4"
+
+# Dev-dependencies only apply when building THIS crate's tests/benches; they
+# are invisible to downstream crates (boards consume `app` as a normal
+# dependency), so nothing here can leak into firmware builds. Re-declaring
+# embassy-time with an extra feature is the standard way to turn a feature on
+# for tests only: cargo unifies it with the normal dependency above.
+[dev-dependencies]
+# `mock-driver` swaps in a fake, manually-advanced clock (MockDriver) so
+# tests control time deterministically instead of sleeping for real.
+embassy-time = { version = "0.5.0", features = ["mock-driver"] }
+# On hardware these two are provided by the board crate (esp-hal implements
+# critical sections; esp-rtos integrates the timer queue into its executor).
+# A host test binary has neither, so the test build supplies std-friendly
+# fallbacks: critical-section's std implementation, and a self-contained
+# "generic" timer queue (capacity 8) that needs no executor.
+critical-section         = { version = "1.2.0", features = ["std"] }
+embassy-time-queue-utils = { version = "0.3.2", features = ["generic-queue-8"] }
