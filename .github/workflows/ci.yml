@@ -1,0 +1,86 @@
+# CI for a non-workspace repo: `app/` and `boards/esp32/` are independent
+# crates with different toolchains, so each gets its own job with its own
+# working-directory. See docs/decisions/0004-ci-github-actions.md.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to the same branch/PR cancels the still-running CI for the old
+# commit — no point finishing checks on code that's already been superseded.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The portable library compiles for the host with plain stable Rust, so it
+  # gets the full treatment: formatting, lints-as-errors, and unit tests.
+  app:
+    name: app (host, stable)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy (warnings are errors)
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
+
+  # The board crate cross-compiles to xtensa-esp32-none-elf, which needs
+  # Espressif's Rust fork (upstream rustc has no Xtensa backend). The produced
+  # binary can't execute on the x86 runner, so this job checks that the code
+  # lints and builds — no `cargo test`, and never `cargo run` (that would
+  # invoke espflash).
+  esp32:
+    name: esp32 (xtensa, esp toolchain)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: boards/esp32
+    steps:
+      - uses: actions/checkout@v4
+
+      # ldproxy is only needed for ESP-IDF (std) projects; this is bare-metal.
+      - uses: esp-rs/xtensa-toolchain@v1.7
+        with:
+          default: true
+          buildtargets: esp32
+          ldproxy: false
+
+      # build-std recompiles core/alloc from source on a cold build, so the
+      # cache saves several minutes per run.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: boards/esp32
+
+      # main.rs reads WIFI_SSID/WIFI_PASSWORD at compile time via env!();
+      # dummy credentials satisfy the build and nothing is ever flashed here.
+      - name: Provide dummy .env
+        run: cp .env.example .env
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy (warnings are errors)
+        run: cargo clippy --release -- -D warnings
+
+      - name: Build
+        run: cargo build --release

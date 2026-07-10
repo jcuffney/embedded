@@ -5,4 +5,8 @@ target/
 # Local secrets — every board crate keeps its own .env next to its build.rs
 **/.env
 
+# `app` is a library and owns no lockfile (ADR 0002) — host-side cargo runs
+# (test/clippy) generate one as a side effect; don't commit it
+app/Cargo.lock
+
 .claude/settings.local.json
