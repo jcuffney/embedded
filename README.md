@@ -20,6 +20,7 @@ docs/decisions/    Short records of why things are the way they are.
                      0002  why board crates aren't workspace members
                      0003  how the memory numbers were chosen
                      0004  why rust-analyzer needs explicit config here
+                     0005  how unit tests + the coverage floor work
 .vscode/           Editor config (VS Code and Cursor) so rust-analyzer
                    analyzes for the chip target instead of the host.
 CLAUDE.md          Instructions for AI-assisted sessions in this repo.
@@ -73,6 +74,29 @@ Expected serial output: WiFi association, an IP from DHCP, `HTTP status: 200`,
 and LED toggle logs every 500 ms. Note: the DevKitC-32E has **no user LED** on
 board — wire an LED (with a resistor) to GPIO2, or change the pin in
 `boards/esp32/src/main.rs`.
+
+## Testing
+
+Portable logic in `app/` is unit-tested **on the host** — no hardware, no
+forked toolchain:
+
+```sh
+cd app
+cargo test               # plain stable Rust; runs in milliseconds
+cargo llvm-cov           # coverage report (cargo install cargo-llvm-cov)
+```
+
+This works even though `app` is `no_std`: the test binary runs on your
+machine and links `std`; only the library avoids it. Async code is tested
+without an executor by polling futures manually and advancing embassy-time's
+`MockDriver` — see the test module in [app/src/blink.rs](app/src/blink.rs)
+for the pattern (it's the template for new tests).
+
+The board crate has no tests — its binaries are Xtensa machine code that
+can't run on a dev machine or CI runner, which is exactly why logic lives in
+`app/`. CI enforces a line-coverage floor on `app` (`cargo llvm-cov
+--fail-under-lines`); the number is measured, not aspirational — details in
+[docs/decisions/0005](docs/decisions/0005-host-unit-tests-and-coverage.md).
 
 ## Using this as a template
 

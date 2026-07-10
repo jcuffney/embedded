@@ -34,4 +34,12 @@ cargo run --release    # builds, flashes via espflash, opens serial monitor
 
 Secrets live in `boards/esp32/.env` (gitignored, injected at compile time by `build.rs`). Never commit credentials.
 
+## Testing pattern
+
+- New logic in `app/` gets an inline `#[cfg(test)] mod tests` next to the code, run **on the host**: `cd app && cargo test`. (Works despite `no_std` — the test binary links `std`; the library doesn't.)
+- Async code: no executor in tests. Poll futures manually (`core::pin::pin!` + `Waker::noop()`) and advance time with `embassy_time::MockDriver` (enabled via `[dev-dependencies]` only). `MockDriver` is a process-global clock — keep time-advancing assertions within one test fn. Template: the test module in `app/src/blink.rs`.
+- Hardware traits get hand-rolled fakes (like `FakePin` there), not a mocking crate.
+- CI enforces a line-coverage floor on `app` (`cargo llvm-cov --fail-under-lines N` in `.github/workflows/ci.yml`). N is **measured, rounded down to the nearest 5** — when a PR meaningfully raises coverage, ratchet N up in that same PR. Never lower it to make a PR pass.
+- `boards/*` crates get no unit tests (cross-compiled binaries can't run in CI); keep them thin wrappers so logic stays testable in `app/`. See `docs/decisions/0005`.
+
 Hardware note: the dev board is an ESP32-DevKitC-32E — CH340 USB-serial (WCH driver on macOS, `/dev/tty.wchusbserial-*`), and it has **no user LED**; blinky drives GPIO2 for an external LED.

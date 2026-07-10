@@ -47,3 +47,18 @@ pub async fn get_status(stack: Stack<'static>, url: &str) -> Result<u16, HttpErr
     let resp = req.send(&mut rx_buf).await?;
     Ok(resp.status.0)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::HttpError;
+
+    // `get_status` itself needs a live embassy-net `Stack` (a real network
+    // driver behind it), so it isn't unit-testable today — see ADR 0005 for
+    // the future direction. What IS pure logic is the error conversion that
+    // every `?` in get_status relies on.
+    #[test]
+    fn reqwless_errors_convert_via_from() {
+        let err: HttpError = reqwless::Error::Dns.into();
+        assert!(matches!(err, HttpError::Request(reqwless::Error::Dns)));
+    }
+}
