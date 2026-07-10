@@ -8,7 +8,7 @@ use embassy_time::{Duration, Timer};
 use esp_hal::peripherals::WIFI;
 use esp_hal::rng::Rng;
 use esp_radio::wifi::{
-    sta::StationConfig, Config as WifiConfig, Interface, WifiController, WifiError,
+    Config as WifiConfig, Interface, WifiController, WifiError, sta::StationConfig,
 };
 use log::{info, warn};
 use static_cell::StaticCell;

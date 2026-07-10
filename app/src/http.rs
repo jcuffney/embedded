@@ -5,9 +5,9 @@
 //! the board crate.
 
 use embassy_net::{
+    Stack,
     dns::DnsSocket,
     tcp::client::{TcpClient, TcpClientState},
-    Stack,
 };
 use reqwless::{client::HttpClient, request::Method};
 
