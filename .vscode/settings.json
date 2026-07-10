@@ -1,0 +1,27 @@
+{
+    // There is no root Cargo.toml (see docs/decisions/0002), so rust-analyzer
+    // can't auto-discover the project — point it at the board crate. `app` is
+    // analyzed through it as a path dependency, with the correct target and
+    // cfg's. Future boards get added to this list (but see ADR 0004 for the
+    // one-target-at-a-time caveat).
+    "rust-analyzer.linkedProjects": [
+        "boards/esp32/Cargo.toml"
+    ],
+
+    // Analyze for the chip, not the host. Without this rust-analyzer assumes
+    // your machine's target, where `std` exists — so `no_std` violations
+    // aren't flagged and target cfg's resolve wrong.
+    "rust-analyzer.cargo.target": "xtensa-esp32-none-elf",
+
+    // The Xtensa target only exists in Espressif's `esp` toolchain fork.
+    // boards/esp32/rust-toolchain.toml covers terminal builds, but the
+    // rust-analyzer server starts at the repo root, so pin it here too.
+    "rust-analyzer.server.extraEnv": {
+        "RUSTUP_TOOLCHAIN": "esp"
+    },
+
+    // Don't also check tests/benches/examples — those imply a host target
+    // and std, which don't exist here.
+    "rust-analyzer.cargo.allTargets": false,
+    "rust-analyzer.check.allTargets": false
+}

@@ -9,4 +9,4 @@ rustflags = ["-C", "link-arg=-nostartfiles"]
 ESP_LOG = "info"
 
 [unstable]
-build-std = ["core"]
+build-std = ["core", "alloc"]

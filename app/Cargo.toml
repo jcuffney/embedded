@@ -1,0 +1,21 @@
+# The portable "application" crate: everything in here must compile for ANY
+# chip, so it may only depend on hardware-agnostic crates (embassy-*,
+# embedded-hal traits, pure-logic libraries). If you find yourself wanting an
+# `esp-*` or `stm32-*` dependency here, that code belongs in a board crate.
+# See docs/decisions/0001-app-board-split.md for the reasoning.
+
+[package]
+name    = "app"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Networking types (Stack, TCP, DNS). The chip-specific *driver* behind the
+# stack lives in the board crate; this crate only sees the portable interface.
+embassy-net  = { version = "0.9.1", default-features = false, features = ["proto-ipv4", "tcp", "dns", "medium-ethernet"] }
+embassy-time = "0.5.0"
+# The portability seam for hardware: traits like OutputPin that every HAL
+# (esp-hal, embassy-stm32, rp-hal, ...) implements.
+embedded-hal = "1.0"
+reqwless     = { version = "0.14.0", default-features = false, features = ["log"] }
+log          = "0.4"

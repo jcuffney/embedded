@@ -1,2 +1,8 @@
-/target
+# Build artifacts (root `target/` is stale from the pre-restructure layout;
+# each crate now builds into its own target dir)
+target/
+
+# Local secrets — every board crate keeps its own .env next to its build.rs
+**/.env
+
 .claude/settings.local.json
