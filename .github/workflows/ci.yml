@@ -29,11 +29,16 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
+          # llvm-tools ships the profiling runtime cargo-llvm-cov needs to
+          # instrument the test binary for coverage.
+          components: rustfmt, clippy, llvm-tools-preview
 
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: app
+
+      # Prebuilt cargo-llvm-cov binary; much faster than `cargo install`.
+      - uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Check formatting
         run: cargo fmt --check
@@ -41,8 +46,13 @@ jobs:
       - name: Clippy (warnings are errors)
         run: cargo clippy --all-targets -- -D warnings
 
-      - name: Test
-        run: cargo test
+      # Runs the same suite as `cargo test`, instrumented for coverage, and
+      # fails if line coverage drops below the floor. The number is what the
+      # suite measured when tests were introduced, rounded down — a ratchet
+      # against regression, not an aspiration. Raise it in the same PR when
+      # coverage meaningfully improves. See docs/decisions/0005.
+      - name: Test with coverage floor
+        run: cargo llvm-cov --fail-under-lines 75
 
   # The board crate cross-compiles to xtensa-esp32-none-elf, which needs
   # Espressif's Rust fork (upstream rustc has no Xtensa backend). The produced
