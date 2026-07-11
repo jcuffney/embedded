@@ -1,11 +1,25 @@
 //! Portable blink logic.
 //!
-//! This is a plain generic `async fn`, NOT an `#[embassy_executor::task]`.
+//! `#![no_std]` means this crate doesn't link the Rust standard library
+//! (there's no OS to provide files, threads, or a heap by default) — only
+//! `core`, which works on bare metal. Everything here is written against
+//! portable traits and can be reused unchanged on any board.
+//!
+//! `blink` is a plain generic `async fn`, NOT an `#[embassy_executor::task]`.
 //! Embassy tasks are statically allocated, so the macro can't handle generic
 //! functions (it wouldn't know how many instances to reserve memory for).
-//! The pattern: portable crates expose generic async fns, and each board
+//! The pattern: capability crates expose generic async fns, and each board
 //! wraps one in a concrete task with its own pin type. See
 //! boards/esp32/src/main.rs for the wrapper.
+
+#![no_std]
+
+// The LIBRARY never links std — but the test binary always does (it runs on
+// the host, and the test harness itself needs std). This line makes that
+// explicit, letting `#[cfg(test)]` modules use Vec, String, etc. It compiles
+// to nothing outside `cargo test`.
+#[cfg(test)]
+extern crate std;
 
 use embassy_time::{Duration, Timer};
 use embedded_hal::digital::StatefulOutputPin;

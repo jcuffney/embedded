@@ -4,18 +4,18 @@
 
 ## Context
 
-The whole point of the `app`/`boards` split (ADR 0001) is that portable
-logic can be exercised without hardware — yet `app` had zero tests, and
-CI's `cargo test` step passed vacuously. Nothing stopped logic bugs from
-reaching the flash step, and nothing stopped test coverage from silently
-eroding as code grew.
+The whole point of the `crates/`/`boards/` split (ADR 0001) is that
+portable logic can be exercised without hardware — yet the capability
+crates had zero tests, and CI's `cargo test` step passed vacuously. Nothing
+stopped logic bugs from reaching the flash step, and nothing stopped test
+coverage from silently eroding as code grew.
 
-Testing this crate is not entirely conventional, which is why the pattern
+Testing these crates is not entirely conventional, which is why the pattern
 deserves an ADR:
 
-- `app` is `#![no_std]`, so it's easy to assume `cargo test` can't work.
-  It can: the **test binary** runs on the host and links `std`; only the
-  library itself avoids it.
+- The capability crates are `#![no_std]`, so it's easy to assume
+  `cargo test` can't work. It can: the **test binary** runs on the host and
+  links `std`; only the library itself avoids it.
 - The interesting function, `blink`, is `async` and returns `!` — no
   executor can ever "finish" it, and real time (`Timer::after`) would make
   tests slow and flaky.
@@ -73,28 +73,28 @@ Option 2 for tests, cargo-llvm-cov with a measured floor for coverage:
   Caveat: `MockDriver` is one process-global clock and tests run on
   parallel threads, so time-advancing assertions stay within a single test
   fn until something forces a serialization scheme.
-- **CI**: the app job's `cargo test` step becomes
-  `cargo llvm-cov --fail-under-lines 75`, which runs the same suite
-  instrumented and exits non-zero below the floor. 75 is the measured
-  75.86% at introduction, rounded down to the nearest 5. Raising it belongs
-  in the same PR as the tests that earn it.
+- **CI**: the host job's test step is
+  `cargo llvm-cov --workspace --fail-under-lines N`, which runs the same
+  suite instrumented and exits non-zero below the floor. N is **measured**
+  — what the suite actually covers, rounded down to the nearest 5 (75 when
+  tests were introduced; 85 today, after the HTTP trait seam of ADR 0006).
+  Raising it belongs in the same PR as the tests that earn it; never lower
+  it to make a PR pass.
 
 ## Consequences
 
 - Logic bugs in portable code are now caught on the host in milliseconds,
-  before any flash cycle; PRs that drag line coverage below 75% fail CI.
-- The pattern is documented by example: `blink.rs`'s test module is the
-  template for testing async + trait-based code (FakePin, mock clock,
-  manual polls), `http.rs`'s for plain pure-logic tests.
+  before any flash cycle; PRs that drag line coverage below the floor fail
+  CI.
+- The pattern is documented by example: the test module in
+  `crates/blink/src/lib.rs` is the template for testing async + trait-based
+  code (FakePin, mock clock, manual polls); `crates/http-client`'s test
+  module for network logic through trait-seam fakes (ADR 0006).
 - Test code is clippy-load-bearing (`--all-targets -D warnings` covers it).
-- `http::get_status` remains uncovered — it needs a live `embassy_net::
-  Stack`. Making it testable means introducing a trait seam (e.g. generics
-  over reqwless's `TcpConnect`/`Dns` traits) — worth its own ADR if the
-  HTTP logic grows beyond one function.
 - `boards/esp32` still has no runtime verification (CI proves it compiles,
   not that it blinks). On-target testing (`embedded-test`, QEMU, HIL) is a
   future ADR.
 - The floor is a ratchet, not a guarantee: a small amount of new untested
-  code can still merge if the total stays above 75%. Stricter gates (e.g.
-  per-PR diff coverage) were deliberately skipped as overkill for a
+  code can still merge if the total stays above the floor. Stricter gates
+  (e.g. per-PR diff coverage) were deliberately skipped as overkill for a
   template.

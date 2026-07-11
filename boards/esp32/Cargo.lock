@@ -18,18 +18,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c583acf993cf4245c4acb0a2cc2ab1f9cc097de73411bb6d3647ff6af2b1013d"
 
 [[package]]
-name = "app"
-version = "0.1.0"
-dependencies = [
- "embassy-net",
- "embassy-time",
- "embedded-hal 1.0.0",
- "embedded-nal-async",
- "log",
- "reqwless",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -86,10 +74,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4388bee8683e3d04af747c73422af53102d2bd24d9eadb6cbc100baef4b43f8"
 
 [[package]]
+name = "blink"
+version = "0.1.0"
+dependencies = [
+ "embassy-time",
+ "embedded-hal 1.0.0",
+]
+
+[[package]]
 name = "blinky-esp32"
 version = "0.1.0"
 dependencies = [
- "app",
+ "blink",
  "critical-section",
  "embassy-executor",
  "embassy-net",
@@ -101,6 +97,7 @@ dependencies = [
  "esp-println",
  "esp-radio",
  "esp-rtos",
+ "http-client",
  "log",
  "static_cell",
 ]
@@ -1310,6 +1307,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
 dependencies = [
  "digest",
+]
+
+[[package]]
+name = "http-client"
+version = "0.1.0"
+dependencies = [
+ "embassy-net",
+ "embedded-nal-async",
+ "reqwless",
 ]
 
 [[package]]

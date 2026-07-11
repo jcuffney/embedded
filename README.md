@@ -1,5 +1,8 @@
 # blinky — an Embassy template for embedded Rust
 
+[![CI](https://github.com/jcuffney/embedded/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jcuffney/embedded/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/jcuffney/embedded?sort=semver)](https://github.com/jcuffney/embedded/releases)
+
 A baseline project for async embedded Rust with [Embassy](https://embassy.dev),
 structured so the same application logic runs on different chips (ESP32 today,
 ARM boards later). The example app blinks an LED, joins WiFi, and makes an
@@ -8,28 +11,37 @@ HTTP request.
 ## Layout
 
 ```
-app/               Chip-agnostic logic (no_std lib). Blink + HTTP client.
-                   Depends only on embassy-* and embedded-hal traits —
-                   never on a specific HAL.
+Cargo.toml         Root *virtual* workspace: groups the host-buildable
+                   crates below and pins shared dependency versions.
+                   Board crates are excluded on purpose.
+crates/            Capability crates: application logic that works
+                   regardless of hardware — one small no_std lib per
+                   capability, depending only on portable traits
+                   (embassy-*, embedded-hal), never on a specific HAL.
+  blink/           LED toggle logic.
+  http-client/     Status-fetching HTTP client.
 boards/esp32/      Everything ESP32-specific: hardware bring-up, WiFi
                    driver, toolchain + cargo config, flashing setup.
                    Self-contained crate with its own Cargo.lock.
 docs/decisions/    Short records of why things are the way they are.
                    Start here to understand the structure:
-                     0001  why app/ and boards/ are separate crates
-                     0002  why board crates aren't workspace members
+                     0001  why portable logic and boards are separate crates
+                     0002  the crates/ workspace; why boards aren't members
                      0003  how the memory numbers were chosen
-                     0004  why rust-analyzer needs explicit config here
+                     0004  how CI works (two toolchain worlds)
                      0005  how unit tests + the coverage floor work
                      0006  how the HTTP client is tested (trait seam)
+                     0007  why rust-analyzer needs explicit config here
 .vscode/           Editor config (VS Code and Cursor) so rust-analyzer
                    analyzes for the chip target instead of the host.
 CLAUDE.md          Instructions for AI-assisted sessions in this repo.
 ```
 
-There is intentionally no root `Cargo.toml` — you always build from inside a
-board directory so that board's toolchain and target config apply
-(see [docs/decisions/0002](docs/decisions/0002-standalone-board-crates.md)).
+The root `Cargo.toml` is a **host-side** workspace only — no code, no boards.
+Firmware is still always built from inside a board directory so that board's
+toolchain and target config apply; boards are `exclude`d from the workspace
+for exactly that reason (see
+[docs/decisions/0002](docs/decisions/0002-host-workspace-standalone-boards.md)).
 
 ## Prerequisites (ESP32 board)
 
@@ -57,7 +69,7 @@ the committed [.vscode/settings.json](.vscode/settings.json) makes
 rust-analyzer analyze for the ESP32 target with the `esp` toolchain. Without
 it, rust-analyzer assumes your host target — where `std` exists — and misses
 `no_std` errors. Details in
-[docs/decisions/0004](docs/decisions/0004-rust-analyzer-editor-config.md).
+[docs/decisions/0007](docs/decisions/0007-rust-analyzer-editor-config.md).
 
 ## Build, flash, run
 
@@ -78,28 +90,29 @@ board — wire an LED (with a resistor) to GPIO2, or change the pin in
 
 ## Testing
 
-Portable logic in `app/` is unit-tested **on the host** — no hardware, no
-forked toolchain:
+The capability crates are unit-tested **on the host** — no hardware, no
+forked toolchain. From the repo root:
 
 ```sh
-cd app
-cargo test               # plain stable Rust; runs in milliseconds
-cargo llvm-cov           # coverage report (cargo install cargo-llvm-cov)
+cargo test --workspace       # plain stable Rust; runs in milliseconds
+cargo llvm-cov --workspace   # coverage report (cargo install cargo-llvm-cov)
 ```
 
-This works even though `app` is `no_std`: the test binary runs on your
-machine and links `std`; only the library avoids it. Async code is tested
+This works even though the crates are `no_std`: the test binary runs on your
+machine and links `std`; only the libraries avoid it. Async code is tested
 without an executor by polling futures manually and advancing embassy-time's
-`MockDriver` — see the test module in [app/src/blink.rs](app/src/blink.rs)
-for the pattern (it's the template for new tests). Async **I/O** is tested
-the same way with fake network traits — see the test module in
-[app/src/http.rs](app/src/http.rs) and
+`MockDriver` — see the test module in
+[crates/blink/src/lib.rs](crates/blink/src/lib.rs) for the pattern (it's the
+template for new tests). Async **I/O** is tested the same way with fake
+network traits — see the test module in
+[crates/http-client/src/lib.rs](crates/http-client/src/lib.rs) and
 [docs/decisions/0006](docs/decisions/0006-http-trait-seam-for-testing.md).
 
 The board crate has no tests — its binaries are Xtensa machine code that
 can't run on a dev machine or CI runner, which is exactly why logic lives in
-`app/`. CI enforces a line-coverage floor on `app` (`cargo llvm-cov
---fail-under-lines`); the number is measured, not aspirational — details in
+`crates/`. CI enforces a line-coverage floor on the workspace (`cargo
+llvm-cov --workspace --fail-under-lines`); the number is measured, not
+aspirational — details in
 [docs/decisions/0005](docs/decisions/0005-host-unit-tests-and-coverage.md).
 
 ## Using this as a template
@@ -107,23 +120,34 @@ can't run on a dev machine or CI runner, which is exactly why logic lives in
 Knobs to turn first: `SSID`/`PASSWORD` (via `.env`), `HTTP_URL`, the LED pin
 and `BLINK_INTERVAL_MS` — all in `boards/esp32/src/main.rs`.
 
-Where new code goes:
+Where new code goes — the boundary rule:
 
-- **Portable logic** (protocols, state machines, business logic) → `app/`,
-  written against `embedded-hal` traits and `embassy-net`. If it needs an
-  `esp-*` crate, it isn't portable — it goes in the board crate.
-- **Hardware specifics** (pins, drivers, radios, power) → `boards/<board>/`.
+- **Application logic that works regardless of hardware** (protocols, state
+  machines, business logic) → a capability crate in `crates/`, written only
+  against portable traits (`embedded-hal`, `embedded-nal-async`,
+  `embassy-net`). If it needs an `esp-*` crate, it isn't portable — it goes
+  in the board crate. Prefer a new small crate per capability over growing
+  an existing one.
+- **Board-specific logic** (pins, drivers, radios, power, bring-up) →
+  `boards/<board>/`. A board crate is where the trait seams get filled in
+  with the concrete implementations that make the firmware flashable —
+  one board may wire the same capability crate to several different
+  hardware types.
 
 ## Porting to a new chip (e.g. RP2040, STM32)
 
 1. Create `boards/<chip>/` as a sibling of `boards/esp32/` — its own
-   `Cargo.toml` (`app = { path = "../../app" }`), `src/main.rs`,
-   `.cargo/config.toml`, and (if needed) `rust-toolchain.toml` / `memory.x`.
-   ARM chips build on stable Rust with `probe-rs` as the runner — no forked
-   toolchain needed.
+   `Cargo.toml` (`blink = { path = "../../crates/blink" }`, etc.),
+   `src/main.rs`, `.cargo/config.toml`, and (if needed)
+   `rust-toolchain.toml` / `memory.x`. ARM chips build on stable Rust with
+   `probe-rs` as the runner — no forked toolchain needed. Also add the new
+   directory to `exclude` in the root `Cargo.toml` (literal path — `exclude`
+   doesn't take globs).
 2. In `main.rs`, do that chip's bring-up (its HAL init + embassy setup) and
-   wrap the generic fns from `app` in concrete `#[embassy_executor::task]`s,
-   exactly like `blink_task` in the ESP32 board.
+   wrap the generic fns from the capability crates in concrete
+   `#[embassy_executor::task]`s, exactly like `blink_task` in the ESP32
+   board.
 3. Replace `wifi.rs` with that board's network driver (or drop networking).
-   Only the resulting `embassy_net::Stack` crosses into `app`.
-4. `app/` is reused unchanged — that's the point of the split.
+   Only the resulting `embassy_net::Stack` crosses into `crates/`.
+4. The capability crates are reused unchanged — that's the point of the
+   split.

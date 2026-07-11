@@ -1,9 +1,11 @@
 {
-    // There is no root Cargo.toml (see docs/decisions/0002), so rust-analyzer
-    // can't auto-discover the project — point it at the board crate. `app` is
-    // analyzed through it as a path dependency, with the correct target and
-    // cfg's. Future boards get added to this list (but see ADR 0004 for the
-    // one-target-at-a-time caveat).
+    // The root Cargo.toml is the HOST-side workspace (crates/, future
+    // backend) and is deliberately NOT linked here: rust-analyzer should
+    // analyze for the chip target, so point it at the board crate instead.
+    // The capability crates are analyzed through it as path dependencies,
+    // with the correct target and cfg's. Future boards get added to this
+    // list (but see ADR 0004 for the one-target-at-a-time caveat; ADR 0007
+    // for the workspace layout).
     "rust-analyzer.linkedProjects": [
         "boards/esp32/Cargo.toml"
     ],

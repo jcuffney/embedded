@@ -1,0 +1,31 @@
+# A capability crate: application logic that works regardless of hardware.
+# This one only sees portable network interfaces (embassy-net's Stack, the
+# embedded-nal-async traits); the chip-specific network *driver* behind them
+# lives in the board crate. See docs/decisions/0002 for the crates/ layout.
+#
+# Named `http-client` rather than `http` on purpose: the popular `http` crate
+# is a likely dependency of a future backend, and two packages with the same
+# name can't coexist in one dependency graph.
+
+[package]
+name              = "http-client"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+embassy-net        = { workspace = true }
+# The networking analogue of embedded-hal: pure traits (TcpConnect, Dns) that
+# embassy-net implements on hardware and test fakes implement on the host.
+# This is the seam that makes get_status testable — see ADR 0006.
+embedded-nal-async = { workspace = true }
+reqwless           = { workspace = true }
+
+# Test-only (invisible to firmware builds) — see crates/blink/Cargo.toml for
+# the full explanation of the std-fallback pattern.
+[dev-dependencies]
+embassy-time             = { workspace = true, features = ["mock-driver"] }
+critical-section         = { workspace = true, features = ["std"] }
+embassy-time-queue-utils = { workspace = true, features = ["generic-queue-8"] }
+# The async I/O traits (Read, Write, ErrorType) the fake TCP connection in
+# this crate's tests implements.
+embedded-io-async        = { workspace = true }

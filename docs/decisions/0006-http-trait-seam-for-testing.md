@@ -4,12 +4,12 @@
 
 ## Context
 
-After ADR 0005, `http::get_status` was the only untested logic in `app`
-(http.rs sat at 38.89% line coverage). The blocker was structural, not
-essential: the function took a concrete `embassy_net::Stack` and constructed
-`TcpClient`/`DnsSocket` inside itself, so exercising it meant standing up a
-real network stack with a real driver — exactly the hardware dependency the
-host-test pattern exists to avoid.
+After ADR 0005, `get_status` was the only untested logic in the capability
+crates (`crates/http-client` sat at 38.89% line coverage). The blocker was
+structural, not essential: the function took a concrete
+`embassy_net::Stack` and constructed `TcpClient`/`DnsSocket` inside itself,
+so exercising it meant standing up a real network stack with a real driver
+— exactly the hardware dependency the host-test pattern exists to avoid.
 
 For GPIO the escape hatch was a trait (`StatefulOutputPin`, ADR 0005's
 `FakePin`). Networking needed its equivalent — and it already existed:
@@ -21,7 +21,7 @@ embassy-net types earlier than necessary.
 ## Options considered
 
 1. **Leave it untested.** The "keep boards thin" argument doesn't apply —
-   this is portable logic in `app`, precisely the bucket the coverage
+   this is portable logic in `crates/`, precisely the bucket the coverage
    ratchet (ADR 0005) exists to protect. Every future network feature would
    pile into the untested corner.
 2. **Trait seam via embedded-nal-async generics.** Split the function:
@@ -46,11 +46,11 @@ embassy-net types earlier than necessary.
 
 Option 2. Supporting choices:
 
-- **Fakes are hand-rolled** (`FakeTcp`, `FakeConn`, `FakeDns` in http.rs's
-  test module), per the repo convention from ADR 0005 — no mocking crate.
-  The fake connection serves a canned HTTP response and logs written bytes;
-  the test asserts the exact request line and Host header that went over
-  the "wire".
+- **Fakes are hand-rolled** (`FakeTcp`, `FakeConn`, `FakeDns` in the test
+  module of `crates/http-client/src/lib.rs`), per the repo convention from
+  ADR 0005 — no mocking crate. The fake connection serves a canned HTTP
+  response and logs written bytes; the test asserts the exact request line
+  and Host header that went over the "wire".
 - **`embedded-nal-async` becomes a regular dependency** (not dev): the
   trait bounds appear in library code. It's a pure-trait, hardware-agnostic
   crate, so it respects ADR 0001's portability rule.
@@ -66,8 +66,8 @@ Option 2. Supporting choices:
 
 ## Consequences
 
-- http.rs line coverage went 38.89% → 86.78% (crate total 75.86% → 88.20%);
-  the CI floor ratchets 75 → 85.
+- Line coverage of the HTTP client went 38.89% → 86.78%; the CI floor
+  ratcheted 75 → 85 (ADR 0005's rule applied).
 - The tests verify real behavior, not mocks-of-mocks: DNS resolution is on
   the request path (reqwless resolves every request, even IP literals),
   port selection from the URL scheme, the exact request bytes, status

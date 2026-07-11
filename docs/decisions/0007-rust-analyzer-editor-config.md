@@ -1,4 +1,4 @@
-# 0004 — rust-analyzer configuration for no_std cross-compilation
+# 0007 — rust-analyzer configuration for no_std cross-compilation
 
 **Status:** accepted (2026-07-10)
 
@@ -13,9 +13,11 @@ platform. Two separate causes:
    right target from `boards/esp32/.cargo/config.toml`, but that file is
    discovered relative to the directory cargo runs in, and the editor opens
    the repo root.
-2. **No project discovery at all.** Since ADR 0002 removed the root
-   `Cargo.toml`, rust-analyzer finds no crate at the workspace root and
-   falls back to per-file analysis with default (host) assumptions.
+2. **No discovery of the board crate.** The root workspace contains only
+   the host-side capability crates; `boards/esp32` is deliberately excluded
+   (ADR 0002). Opened at the repo root, rust-analyzer never finds the
+   firmware crate on its own and falls back to per-file analysis with
+   default (host) assumptions for it.
 
 There's also a toolchain wrinkle: the `xtensa-esp32-none-elf` target only
 exists in Espressif's forked `esp` toolchain. `boards/esp32/
@@ -26,10 +28,11 @@ server process starts at the repo root where no toolchain file applies.
 
 1. **Open `boards/esp32/` directly as the editor workspace.** Everything
    resolves naturally (cwd-based discovery works), but you lose sight of
-   `app/`, `docs/`, and the repo root — bad ergonomics for a template.
-2. **Restore a root Cargo.toml/workspace.** Rejected in ADR 0002 for
-   toolchain reasons; reversing it to please the editor is the tail wagging
-   the dog.
+   `crates/`, `docs/`, and the repo root — bad ergonomics for a template.
+2. **Make the board crate a workspace member so root discovery finds it.**
+   Rejected in ADR 0002 for toolchain reasons; reversing that to please the
+   editor is the tail wagging the dog — and it still wouldn't fix the
+   target or toolchain the analysis runs with.
 3. **Committed `.vscode/settings.json`** that tells rust-analyzer
    explicitly: which project (`linkedProjects`), which target
    (`cargo.target`), which toolchain (`server.extraEnv.RUSTUP_TOOLCHAIN`),
@@ -39,7 +42,10 @@ server process starts at the repo root where no toolchain file applies.
 ## Decision
 
 Option 3 — this mirrors what Espressif's own `esp-generate` template emits,
-extended with `linkedProjects` because of our multi-crate layout.
+extended with `linkedProjects` because of our multi-crate layout. Analysis
+happens **for the chip**: the board crate pulls in the capability crates as
+path dependencies, so they are analyzed with `no_std` + Xtensa semantics
+too — the strictest interpretation, which is the one worth checking against.
 
 ## Consequences
 
