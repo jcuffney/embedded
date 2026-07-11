@@ -1,0 +1,28 @@
+[build]
+# "espidf" in the triple = there IS an OS: Rust's std is wired onto ESP-IDF
+# (FreeRTOS threads, newlib malloc). Compare boards/esp32's
+# xtensa-esp32-none-elf, where "none" = bare metal. See ADR 0008.
+target = "xtensa-esp32-espidf"
+
+[target.xtensa-esp32-espidf]
+# ldproxy forwards linking to the C toolchain that built ESP-IDF — the final
+# binary is Rust code linked INTO an ESP-IDF firmware image.
+# Install once with: cargo install ldproxy
+linker = "ldproxy"
+runner = "espflash flash --monitor --chip esp32"
+# ESP-IDF v5 uses 64-bit time_t; esp-idf-svc requires matching it.
+rustflags = ["--cfg", "espidf_time64"]
+
+[unstable]
+# No prebuilt std exists for this target; cargo compiles std from source.
+build-std = ["std", "panic_abort"]
+
+[env]
+MCU = "esp32"
+# Pinned so builds are reproducible; esp-idf-svc 0.52 supports v5.3.4+.
+# embuild downloads and compiles this exact ESP-IDF release on first build
+# (~1 GB, 10-20 minutes — one time, then cached).
+ESP_IDF_VERSION = "v5.3.4"
+# "global" = install ESP-IDF + its tools under ~/.espressif, shared across
+# projects and cacheable in CI, instead of duplicating gigabytes per board.
+ESP_IDF_TOOLS_INSTALL_DIR = "global"

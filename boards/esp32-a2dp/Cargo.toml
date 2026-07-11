@@ -1,0 +1,41 @@
+# Board crate: ESP32 as a Bluetooth A2DP source — discovers a speaker by
+# name, pairs, and streams audio from crates/audio to it. Unlike
+# boards/esp32 (bare metal), this board is std-based on ESP-IDF, because
+# Bluetooth Classic only exists via the Bluedroid C stack inside ESP-IDF.
+# The what-and-why is docs/decisions/0008.
+
+[package]
+name = "blinky-esp32-a2dp"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "blinky-esp32-a2dp"
+path = "src/main.rs"
+# The default cargo test harness can't run on this target; disabling it
+# also stops rust-analyzer from flagging phantom test errors.
+harness = false
+
+[dependencies]
+# The portable synthesis crate — the only code shared with other boards.
+audio = { path = "../../crates/audio" }
+# Safe Rust wrappers over ESP-IDF services, including Bluedroid (bt::*).
+# The bt module is compiled in when sdkconfig.defaults enables Bluetooth —
+# it's gated on sdkconfig, not on a cargo feature.
+esp-idf-svc = "0.52.1"
+log = "0.4"
+# Ergonomic error handling for application code — a std-world luxury the
+# no_std board can't use (anyhow needs alloc + Error trait).
+anyhow = "1"
+
+[build-dependencies]
+# Downloads/builds ESP-IDF itself and exports its link flags to cargo.
+embuild = "0.33"
+
+# espflash needs a size-optimized image; these mirror esp-idf-template.
+[profile.release]
+opt-level = "s"
+
+[profile.dev]
+debug = true
+opt-level = "z"
