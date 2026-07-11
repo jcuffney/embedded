@@ -1,6 +1,7 @@
-# CI for a non-workspace repo: `app/` and `boards/esp32/` are independent
-# crates with different toolchains, so each gets its own job with its own
-# working-directory. See docs/decisions/0004-ci-github-actions.md.
+# Two toolchain worlds, two jobs: the root workspace (crates/) builds on the
+# host with stable Rust; each board crate is excluded from the workspace and
+# cross-compiles with its own toolchain from its own directory. See
+# docs/decisions/0004-ci-github-actions.md and 0007.
 
 name: CI
 
@@ -16,14 +17,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # The portable library compiles for the host with plain stable Rust, so it
-  # gets the full treatment: formatting, lints-as-errors, and unit tests.
-  app:
-    name: app (host, stable)
+  # The capability crates (root workspace) compile for the host with plain
+  # stable Rust, so they get the full treatment: formatting, lints-as-errors,
+  # and unit tests. Runs from the repo root — `--workspace` covers every
+  # member; boards are excluded and handled by their own jobs below.
+  host:
+    name: host workspace (stable)
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: app
     steps:
       - uses: actions/checkout@v4
 
@@ -34,8 +34,6 @@ jobs:
           components: rustfmt, clippy, llvm-tools-preview
 
       - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: app
 
       # Prebuilt cargo-llvm-cov binary; much faster than `cargo install`.
       - uses: taiki-e/install-action@cargo-llvm-cov
@@ -44,15 +42,16 @@ jobs:
         run: cargo fmt --check
 
       - name: Clippy (warnings are errors)
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       # Runs the same suite as `cargo test`, instrumented for coverage, and
       # fails if line coverage drops below the floor. The number is measured,
       # rounded down — a ratchet against regression, not an aspiration. Raise
       # it in the same PR when coverage meaningfully improves. History: 75 at
-      # introduction (ADR 0005), 85 after the HTTP trait seam (ADR 0006).
+      # introduction (ADR 0005), 85 after the HTTP trait seam (ADR 0006);
+      # unchanged by the workspace split (ADR 0007, measured 88).
       - name: Test with coverage floor
-        run: cargo llvm-cov --fail-under-lines 85
+        run: cargo llvm-cov --workspace --fail-under-lines 85
 
   # The board crate cross-compiles to xtensa-esp32-none-elf, which needs
   # Espressif's Rust fork (upstream rustc has no Xtensa backend). The produced

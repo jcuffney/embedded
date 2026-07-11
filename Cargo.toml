@@ -1,0 +1,38 @@
+# Virtual workspace for everything that builds on the HOST (stable Rust, your
+# machine, a CI runner): the portable capability crates today, backend
+# services later. "Virtual" means there is no [package] and no code at the
+# root — this file only groups members and pins shared dependency versions.
+#
+# Board crates are deliberately EXCLUDED: each is its own root with its own
+# toolchain, target config, and Cargo.lock. See
+# docs/decisions/0002-standalone-board-crates.md (amended by 0007).
+
+[workspace]
+resolver = "3"
+members  = ["crates/*"]
+# Not cosmetic: once this [workspace] exists, cargo walks up the directory
+# tree from wherever it runs and ERRORS on any crate that is neither a member
+# nor excluded — without this line, `cd boards/esp32 && cargo build` breaks.
+# NOTE: unlike `members`, `exclude` takes literal paths, not globs — list
+# each board explicitly when adding one.
+exclude  = ["boards/esp32"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+# Declared once here, consumed by members with `{ workspace = true }`.
+# Members inherit the version (so host-side crates can't drift apart) but may
+# ADD features — e.g. the dev-only "mock-driver" feature on embassy-time.
+[workspace.dependencies]
+embassy-net        = { version = "0.9.1", default-features = false, features = ["proto-ipv4", "tcp", "dns", "medium-ethernet"] }
+embassy-time       = "0.5.0"
+embedded-hal       = "1.0"
+embedded-nal-async = "0.9"
+reqwless           = { version = "0.14.0", default-features = false, features = ["log"] }
+
+# Test-only support (see docs/decisions/0005): std-friendly fallbacks for
+# what a board crate normally provides on hardware.
+critical-section         = "1.2.0"
+embassy-time-queue-utils = "0.3.2"
+embedded-io-async        = "0.7"

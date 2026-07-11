@@ -1,6 +1,6 @@
 //! ESP32 bring-up: everything in this file is chip-specific by design.
 //! It initializes the hardware, starts the async runtime, then hands off to
-//! portable logic in the `app` crate.
+//! portable logic in the capability crates (`blink`, `http-client`).
 
 #![no_std]
 #![no_main]
@@ -53,7 +53,7 @@ async fn main(spawner: Spawner) -> ! {
     let rng = Rng::new();
     let stack = wifi::start(spawner, rng, peripherals.WIFI, SSID, PASSWORD).await;
 
-    match app::http::get_status(stack, HTTP_URL).await {
+    match http_client::get_status(stack, HTTP_URL).await {
         Ok(code) => info!("HTTP status: {}", code),
         Err(e) => info!("HTTP request failed: {:?}", e),
     }
@@ -67,8 +67,9 @@ async fn main(spawner: Spawner) -> ! {
 
 // The board-side wrapper for the portable blink logic: it pins down the
 // concrete pin type (esp-hal's `Output`), which is the one thing the generic
-// fn in `app` can't know. See app/src/blink.rs for why the split exists.
+// fn in the `blink` crate can't know. See crates/blink/src/lib.rs for why
+// the split exists.
 #[embassy_executor::task]
 async fn blink_task(mut led: Output<'static>) -> ! {
-    app::blink::blink(&mut led, Duration::from_millis(BLINK_INTERVAL_MS)).await
+    blink::blink(&mut led, Duration::from_millis(BLINK_INTERVAL_MS)).await
 }

@@ -1,8 +1,18 @@
 //! Minimal HTTP client on top of embassy-net + reqwless.
 //!
-//! Chip-agnostic: this file only sees the portable `Stack` interface; the
-//! chip-specific network driver (WiFi, Ethernet, ...) that feeds it lives in
-//! the board crate.
+//! `#![no_std]` means this crate doesn't link the Rust standard library —
+//! only `core`, which works on bare metal. Chip-agnostic: this crate only
+//! sees the portable `Stack` interface; the chip-specific network driver
+//! (WiFi, Ethernet, ...) that feeds it lives in the board crate.
+
+#![no_std]
+
+// The LIBRARY never links std — but the test binary always does (it runs on
+// the host, and the test harness itself needs std). This line makes that
+// explicit, letting `#[cfg(test)]` modules use Vec, String, etc. It compiles
+// to nothing outside `cargo test`.
+#[cfg(test)]
+extern crate std;
 
 use embassy_net::{
     Stack,
@@ -39,8 +49,9 @@ impl From<reqwless::Error> for HttpError {
 /// `TcpConnect` and `Dns` are embedded-nal-async's portability traits — the
 /// networking equivalent of embedded-hal's `OutputPin`. On hardware they're
 /// implemented by embassy-net's `TcpClient`/`DnsSocket`; in tests, by the
-/// hand-rolled fakes below. Same seam, same lesson as `FakePin` in blink.rs:
-/// depend on traits, inject the concrete types at the edge. See ADR 0006.
+/// hand-rolled fakes below. Same seam, same lesson as `FakePin` in the
+/// `blink` crate: depend on traits, inject the concrete types at the edge.
+/// See ADR 0006.
 pub async fn get_status_with<T: TcpConnect, D: Dns>(
     tcp: &T,
     dns: &D,
@@ -132,7 +143,8 @@ mod tests {
     /// Why the references: `TcpConnect::connect(&self)` takes SHARED self
     /// (a real stack hands out many connections), so mutable state lives
     /// per-connection (the read cursor) or behind `RefCell` (the write log)
-    /// — the same trick as FakePin's `&Cell`s in blink.rs, one size up.
+    /// — the same trick as FakePin's `&Cell`s in the `blink` crate, one
+    /// size up.
     struct FakeConn<'a> {
         response: &'a [u8],
         pos: usize,

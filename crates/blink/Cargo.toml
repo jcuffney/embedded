@@ -1,0 +1,32 @@
+# A capability crate: application logic that works regardless of hardware,
+# written only against portable traits (embedded-hal, embassy-time). Board
+# crates fill in the concrete trait implementations at the edge. If code here
+# ever wants an `esp-*`/`stm32-*` dependency, it isn't portable — it belongs
+# in a board crate. See docs/decisions/0007 for the crates/ layout and
+# docs/decisions/0001 for the portability boundary itself.
+
+[package]
+name              = "blink"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+embassy-time = { workspace = true }
+embedded-hal = { workspace = true }
+
+# Dev-dependencies only apply when building THIS crate's tests; they are
+# invisible to downstream crates (boards consume `blink` as a normal
+# dependency), so nothing here can leak into firmware builds.
+[dev-dependencies]
+# `mock-driver` swaps in a fake, manually-advanced clock (MockDriver) so
+# tests control time deterministically instead of sleeping for real. Cargo
+# unifies this with the normal dependency above — it just turns the feature
+# on for test builds.
+embassy-time = { workspace = true, features = ["mock-driver"] }
+# On hardware these two are provided by the board crate (the HAL implements
+# critical sections; the RTOS integrates the timer queue into its executor).
+# A host test binary has neither, so the test build supplies std-friendly
+# fallbacks: critical-section's std implementation, and a self-contained
+# "generic" timer queue (capacity 8) that needs no executor.
+critical-section         = { workspace = true, features = ["std"] }
+embassy-time-queue-utils = { workspace = true, features = ["generic-queue-8"] }

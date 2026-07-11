@@ -1,6 +1,10 @@
 # 0002 — Board crates are standalone, not cargo-workspace members
 
-**Status:** accepted (2026-07-10)
+**Status:** accepted (2026-07-10); amended by
+[0007](0007-workspace-and-capability-crates.md) (2026-07-10) — the revisit
+condition below fired: a root **host-side** workspace now exists, with board
+crates explicitly `exclude`d. Everything this record says about *boards*
+still holds.
 
 ## Context
 

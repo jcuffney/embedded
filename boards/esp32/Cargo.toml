@@ -1,8 +1,9 @@
 # The ESP32 board crate: everything chip-specific lives here — HAL, radio,
 # bootloader glue, and the bring-up code in src/main.rs. Portable logic comes
-# from the `app` crate below. This crate is deliberately standalone (own
-# Cargo.lock, rust-toolchain.toml, .cargo/config.toml) rather than a workspace
-# member: see docs/decisions/0002-standalone-board-crates.md.
+# from the capability crates under crates/. This crate is deliberately
+# standalone (own Cargo.lock, rust-toolchain.toml, .cargo/config.toml) and
+# EXCLUDED from the root host workspace: see
+# docs/decisions/0002-standalone-board-crates.md (amended by 0007).
 
 [package]
 name         = "blinky-esp32"
@@ -11,9 +12,10 @@ edition      = "2024"
 rust-version = "1.95"
 
 [dependencies]
-# All portable application logic (blink, http). Adding a new board means
-# re-implementing THIS crate's role, not touching `app`.
-app = { path = "../../app" }
+# The portable capability crates (crates/ at the repo root). Adding a new
+# board means re-implementing THIS crate's role, not touching them.
+blink       = { path = "../../crates/blink" }
+http-client = { path = "../../crates/http-client" }
 
 esp-hal                = { version = "~1.1.0", features = ["esp32", "unstable", "log-04"] }
 esp-rtos               = { version = "0.3.0",  features = ["esp32", "embassy", "log-04", "esp-radio", "esp-alloc"] }
@@ -28,12 +30,12 @@ critical-section       = "1.2.0"
 esp-radio   = { version = "1.0.0-beta.0", features = ["esp32", "wifi", "esp-alloc", "log-04"] }
 esp-alloc   = { version = "0.10.0", features = ["esp32"] }
 # The board owns the network *driver* and stack construction, so it enables
-# dhcpv4 here; `app` only needs the client-side features (tcp, dns).
+# dhcpv4 here; `http-client` only needs the client-side features (tcp, dns).
 embassy-net = { version = "0.9.1",  features = ["proto-ipv4", "tcp", "dns", "dhcpv4", "medium-ethernet", "log"] }
 static_cell = "2"
 
 # Profiles only take effect in the root package of a build, which is why they
-# live here and not in app/Cargo.toml.
+# live here and not in the capability crates.
 [profile.dev]
 opt-level = "s"
 
