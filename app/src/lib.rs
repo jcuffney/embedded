@@ -7,5 +7,12 @@
 
 #![no_std]
 
+// The LIBRARY never links std — but the test binary always does (it runs on
+// the host, and the test harness itself needs std). This line makes that
+// explicit, letting `#[cfg(test)]` modules use Vec, String, etc. It compiles
+// to nothing outside `cargo test`.
+#[cfg(test)]
+extern crate std;
+
 pub mod blink;
 pub mod http;

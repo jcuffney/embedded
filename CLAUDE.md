@@ -38,7 +38,7 @@ Secrets live in `boards/esp32/.env` (gitignored, injected at compile time by `bu
 
 - New logic in `app/` gets an inline `#[cfg(test)] mod tests` next to the code, run **on the host**: `cd app && cargo test`. (Works despite `no_std` — the test binary links `std`; the library doesn't.)
 - Async code: no executor in tests. Poll futures manually (`core::pin::pin!` + `Waker::noop()`) and advance time with `embassy_time::MockDriver` (enabled via `[dev-dependencies]` only). `MockDriver` is a process-global clock — keep time-advancing assertions within one test fn. Template: the test module in `app/src/blink.rs`.
-- Hardware traits get hand-rolled fakes (like `FakePin` there), not a mocking crate.
+- Hardware and network traits get hand-rolled fakes (`FakePin` in `app/src/blink.rs`; `FakeTcp`/`FakeDns` in `app/src/http.rs`), not a mocking crate. Network logic goes in generic cores bounded on `embedded-nal-async` traits (`get_status_with`), with dumb concrete wrappers at the edge — see `docs/decisions/0006`.
 - CI enforces a line-coverage floor on `app` (`cargo llvm-cov --fail-under-lines N` in `.github/workflows/ci.yml`). N is **measured, rounded down to the nearest 5** — when a PR meaningfully raises coverage, ratchet N up in that same PR. Never lower it to make a PR pass.
 - `boards/*` crates get no unit tests (cross-compiled binaries can't run in CI); keep them thin wrappers so logic stays testable in `app/`. See `docs/decisions/0005`.
 

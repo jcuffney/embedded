@@ -24,6 +24,7 @@ dependencies = [
  "embassy-net",
  "embassy-time",
  "embedded-hal 1.0.0",
+ "embedded-nal-async",
  "log",
  "reqwless",
 ]

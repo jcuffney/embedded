@@ -17,6 +17,12 @@ embassy-time = "0.5.0"
 # The portability seam for hardware: traits like OutputPin that every HAL
 # (esp-hal, embassy-stm32, rp-hal, ...) implements.
 embedded-hal = "1.0"
+# The networking analogue of embedded-hal: pure traits (TcpConnect, Dns) that
+# embassy-net implements on hardware and test fakes implement on the host.
+# This is the seam that makes get_status testable — see ADR 0006. Already in
+# the dependency tree via reqwless and embassy-net; adding it here only lets
+# our own code name the traits.
+embedded-nal-async = "0.9"
 reqwless     = { version = "0.14.0", default-features = false, features = ["log"] }
 log          = "0.4"
 
@@ -36,3 +42,6 @@ embassy-time = { version = "0.5.0", features = ["mock-driver"] }
 # "generic" timer queue (capacity 8) that needs no executor.
 critical-section         = { version = "1.2.0", features = ["std"] }
 embassy-time-queue-utils = { version = "0.3.2", features = ["generic-queue-8"] }
+# The async I/O traits (Read, Write, ErrorType) our fake TCP connection
+# implements in http.rs's tests.
+embedded-io-async        = "0.7"
