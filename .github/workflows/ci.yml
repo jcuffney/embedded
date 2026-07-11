@@ -1,7 +1,7 @@
 # Two toolchain worlds, two jobs: the root workspace (crates/) builds on the
 # host with stable Rust; each board crate is excluded from the workspace and
 # cross-compiles with its own toolchain from its own directory. See
-# docs/decisions/0004-ci-github-actions.md and 0007.
+# docs/decisions/0004-ci-github-actions.md and 0002.
 
 name: CI
 
@@ -49,7 +49,7 @@ jobs:
       # rounded down — a ratchet against regression, not an aspiration. Raise
       # it in the same PR when coverage meaningfully improves. History: 75 at
       # introduction (ADR 0005), 85 after the HTTP trait seam (ADR 0006);
-      # unchanged by the workspace split (ADR 0007, measured 88).
+      # unchanged by the workspace split (ADR 0002, measured 88).
       - name: Test with coverage floor
         run: cargo llvm-cov --workspace --fail-under-lines 85
 

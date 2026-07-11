@@ -26,12 +26,12 @@ boards/esp32/      Everything ESP32-specific: hardware bring-up, WiFi
 docs/decisions/    Short records of why things are the way they are.
                    Start here to understand the structure:
                      0001  why portable logic and boards are separate crates
-                     0002  why board crates aren't workspace members
+                     0002  the crates/ workspace; why boards aren't members
                      0003  how the memory numbers were chosen
-                     0004  why rust-analyzer needs explicit config here
+                     0004  how CI works (two toolchain worlds)
                      0005  how unit tests + the coverage floor work
                      0006  how the HTTP client is tested (trait seam)
-                     0007  the crates/ layout + root host workspace
+                     0007  why rust-analyzer needs explicit config here
 .vscode/           Editor config (VS Code and Cursor) so rust-analyzer
                    analyzes for the chip target instead of the host.
 CLAUDE.md          Instructions for AI-assisted sessions in this repo.
@@ -41,8 +41,7 @@ The root `Cargo.toml` is a **host-side** workspace only — no code, no boards.
 Firmware is still always built from inside a board directory so that board's
 toolchain and target config apply; boards are `exclude`d from the workspace
 for exactly that reason (see
-[docs/decisions/0002](docs/decisions/0002-standalone-board-crates.md) and
-[0007](docs/decisions/0007-workspace-and-capability-crates.md)).
+[docs/decisions/0002](docs/decisions/0002-host-workspace-standalone-boards.md)).
 
 ## Prerequisites (ESP32 board)
 
@@ -70,7 +69,7 @@ the committed [.vscode/settings.json](.vscode/settings.json) makes
 rust-analyzer analyze for the ESP32 target with the `esp` toolchain. Without
 it, rust-analyzer assumes your host target — where `std` exists — and misses
 `no_std` errors. Details in
-[docs/decisions/0004](docs/decisions/0004-rust-analyzer-editor-config.md).
+[docs/decisions/0007](docs/decisions/0007-rust-analyzer-editor-config.md).
 
 ## Build, flash, run
 

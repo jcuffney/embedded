@@ -5,7 +5,7 @@
 #
 # Board crates are deliberately EXCLUDED: each is its own root with its own
 # toolchain, target config, and Cargo.lock. See
-# docs/decisions/0002-standalone-board-crates.md (amended by 0007).
+# docs/decisions/0002-host-workspace-standalone-boards.md.
 
 [workspace]
 resolver = "3"

@@ -1,7 +1,7 @@
 # A capability crate: application logic that works regardless of hardware.
 # This one only sees portable network interfaces (embassy-net's Stack, the
 # embedded-nal-async traits); the chip-specific network *driver* behind them
-# lives in the board crate. See docs/decisions/0007 for the crates/ layout.
+# lives in the board crate. See docs/decisions/0002 for the crates/ layout.
 #
 # Named `http-client` rather than `http` on purpose: the popular `http` crate
 # is a likely dependency of a future backend, and two packages with the same

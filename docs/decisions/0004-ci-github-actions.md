@@ -5,15 +5,17 @@
 ## Context
 
 Nothing verified pushes or PRs: a change could break the build for the
-chip, fail lints, or break `app`'s host-side tests without anyone noticing
-until the next flash. We want CI on standard GitHub-hosted runners
-(`ubuntu-latest`) — no self-hosted hardware.
+chip, fail lints, or break the capability crates' host-side tests without
+anyone noticing until the next flash. We want CI on standard GitHub-hosted
+runners (`ubuntu-latest`) — no self-hosted hardware.
 
 Two properties of this repo shape the design:
 
-- The crates are **not** a workspace (ADR 0002); each is built from inside
-  its own directory so its `rust-toolchain.toml` / `.cargo/config.toml`
-  apply. CI has to mirror that with per-job `working-directory`.
+- The crates live in **two toolchain worlds** (ADR 0002): the root
+  workspace (`crates/*`) builds on plain stable Rust from the repo root,
+  while each board crate is excluded from the workspace and built from
+  inside its own directory so its `rust-toolchain.toml` /
+  `.cargo/config.toml` apply. CI has to mirror that split.
 - `boards/esp32` targets `xtensa-esp32-none-elf`. Upstream rustc has no
   Xtensa backend, so the runner needs Espressif's `esp` toolchain fork —
   and whatever it builds is Xtensa machine code that an x86 runner cannot
@@ -22,12 +24,13 @@ Two properties of this repo shape the design:
 ## Options considered
 
 1. **One job that builds everything.** Simple, but forces the slow esp
-   toolchain install onto the fast `app` checks, and `working-directory`
-   gymnastics obscure which crate failed.
-2. **Two independent jobs, one per crate.** Mirrors the repo layout: `app`
-   runs on plain `dtolnay/rust-toolchain@stable` (fmt, clippy, test);
-   `esp32` installs the fork and does fmt, clippy, release build. Jobs run
-   in parallel; a failure names its crate.
+   toolchain install onto the fast host checks, and `working-directory`
+   gymnastics obscure which side failed.
+2. **Two independent jobs, one per toolchain world.** Mirrors the repo
+   layout: `host` runs on plain `dtolnay/rust-toolchain@stable` from the
+   repo root (fmt, clippy, coverage-gated tests, all `--workspace`);
+   `esp32` installs the fork and does fmt, clippy, release build from its
+   own directory. Jobs run in parallel; a failure names its side.
 3. **Hand-rolled `espup` install for the esp job.** More control, but
    re-implements what `esp-rs/xtensa-toolchain` (the official action,
    `espup` under the hood) already maintains — including toolchain caching
@@ -39,6 +42,9 @@ Option 2, using `esp-rs/xtensa-toolchain@v1.7` (`ldproxy: false` — ldproxy
 is only for ESP-IDF/`std` projects, this is bare-metal `no_std`).
 Supporting choices:
 
+- **Coverage floor in the host job**: the test step is
+  `cargo llvm-cov --workspace --fail-under-lines 85` — the mechanics and
+  the measured-floor policy are ADR 0005.
 - **Dummy `.env` in CI** (`cp .env.example .env`): `main.rs` reads WiFi
   credentials at compile time via `env!()`, so the build fails without one.
   Placeholder values are safe — CI never flashes, and real credentials stay
@@ -57,8 +63,9 @@ Supporting choices:
 
 ## Consequences
 
-- Every PR proves: `app` is formatted, lint-clean, and passes host tests;
-  `boards/esp32` is formatted, lint-clean, and cross-compiles for the chip.
+- Every PR proves: the host workspace is formatted, lint-clean, and passes
+  its tests above the coverage floor; `boards/esp32` is formatted,
+  lint-clean, and cross-compiles for the chip.
 - Lints are now load-bearing: code that merely *warned* locally will fail
   CI until fixed.
 - Cost: the esp32 job's cold start (toolchain install + build-std) is

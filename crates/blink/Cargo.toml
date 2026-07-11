@@ -2,7 +2,7 @@
 # written only against portable traits (embedded-hal, embassy-time). Board
 # crates fill in the concrete trait implementations at the edge. If code here
 # ever wants an `esp-*`/`stm32-*` dependency, it isn't portable — it belongs
-# in a board crate. See docs/decisions/0007 for the crates/ layout and
+# in a board crate. See docs/decisions/0002 for the crates/ layout and
 # docs/decisions/0001 for the portability boundary itself.
 
 [package]

@@ -22,7 +22,7 @@ This repo is a **template** for embedded Rust (Embassy) projects, structured for
 
 - `crates/` — capability crates: **application logic that works regardless of hardware**, one small chip-agnostic `no_std` library per capability (`blink`, `http-client`, ...). Only portable deps allowed (embassy-*, embedded-hal / embedded-nal-async traits). Never add `esp-*`/`stm32-*` here — if code needs one, it belongs in a board crate.
 - `boards/esp32/` — **board-specific logic**: self-contained binary crate (own `Cargo.lock`, `rust-toolchain.toml`, `.cargo/config.toml`). All hardware bring-up lives here, plus the concrete trait implementations that fill in the capability crates' seams so the firmware can actually be flashed. New chips get sibling directories.
-- Root `Cargo.toml` — **virtual workspace for host-buildable crates only** (`members = ["crates/*"]`). Boards are `exclude`d (literal paths, not globs — list each new board). See `docs/decisions/0007`.
+- Root `Cargo.toml` — **virtual workspace for host-buildable crates only** (`members = ["crates/*"]`). Boards are `exclude`d (literal paths, not globs — list each new board). See `docs/decisions/0002`.
 - `docs/decisions/` — the ADRs described above.
 
 Build/flash workflow (must run from inside the board directory so its toolchain and cargo config apply):

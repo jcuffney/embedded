@@ -29,7 +29,7 @@ It's exactly tight on purpose — each slot costs static RAM. Opening a fourth
 concurrent socket without bumping this fails at runtime, so the constant is
 documented where it's declared.
 
-### TCP/header buffers: 1 KiB each (`app/src/http.rs`)
+### TCP/header buffers: 1 KiB each (`crates/http-client/src/lib.rs`)
 
 Originally `TcpClientState<1, 4096, 4096>` plus a 4096-byte header buffer —
 all declared as **locals inside an async fn**. That's the footgun:

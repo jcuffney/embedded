@@ -3,7 +3,7 @@
 # from the capability crates under crates/. This crate is deliberately
 # standalone (own Cargo.lock, rust-toolchain.toml, .cargo/config.toml) and
 # EXCLUDED from the root host workspace: see
-# docs/decisions/0002-standalone-board-crates.md (amended by 0007).
+# docs/decisions/0002-host-workspace-standalone-boards.md.
 
 [package]
 name         = "blinky-esp32"
