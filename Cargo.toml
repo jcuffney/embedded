@@ -15,7 +15,7 @@ members  = ["crates/*"]
 # nor excluded — without this line, `cd boards/esp32 && cargo build` breaks.
 # NOTE: unlike `members`, `exclude` takes literal paths, not globs — list
 # each board explicitly when adding one.
-exclude  = ["boards/esp32"]
+exclude  = ["boards/esp32", "boards/esp32-a2dp"]
 
 [workspace.package]
 version = "0.1.0"
