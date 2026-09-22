@@ -49,9 +49,10 @@ jobs:
       # rounded down — a ratchet against regression, not an aspiration. Raise
       # it in the same PR when coverage meaningfully improves. History: 75 at
       # introduction (ADR 0005), 85 after the HTTP trait seam (ADR 0006);
-      # unchanged by the workspace split (ADR 0002, measured 88).
+      # unchanged by the workspace split (ADR 0002, measured 88); 90 after
+      # crates/audio (ADR 0008, measured 94).
       - name: Test with coverage floor
-        run: cargo llvm-cov --workspace --fail-under-lines 85
+        run: cargo llvm-cov --workspace --fail-under-lines 90
 
   # The board crate cross-compiles to xtensa-esp32-none-elf, which needs
   # Espressif's Rust fork (upstream rustc has no Xtensa backend). The produced
@@ -82,6 +83,53 @@ jobs:
 
       # main.rs reads WIFI_SSID/WIFI_PASSWORD at compile time via env!();
       # dummy credentials satisfy the build and nothing is ever flashed here.
+      - name: Provide dummy .env
+        run: cp .env.example .env
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+      - name: Clippy (warnings are errors)
+        run: cargo clippy --release -- -D warnings
+
+      - name: Build
+        run: cargo build --release
+
+  # The std board (ADR 0008) targets xtensa-esp32-espidf: same Xtensa fork,
+  # but the build also downloads and compiles ESP-IDF itself (via embuild).
+  # Cold runs take 15-25 minutes; the ~/.espressif cache brings warm runs
+  # back in line with the bare-metal job. Same rules: lint + build only.
+  esp32-a2dp:
+    name: esp32-a2dp (xtensa + ESP-IDF, std)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: boards/esp32-a2dp
+    steps:
+      - uses: actions/checkout@v4
+
+      # ldproxy is the linker shim that hands linking to ESP-IDF's toolchain.
+      - uses: esp-rs/xtensa-toolchain@v1.7
+        with:
+          default: true
+          buildtargets: esp32
+          ldproxy: true
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: boards/esp32-a2dp
+
+      # ESP-IDF + its tools install under ~/.espressif (see the board's
+      # .cargo/config.toml); keyed on the config so bumping ESP_IDF_VERSION
+      # rebuilds the cache. Note clippy needs this too — esp-idf-sys must
+      # fully build ESP-IDF even just to type-check.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.espressif
+          key: espidf-${{ hashFiles('boards/esp32-a2dp/.cargo/config.toml') }}
+
+      # main.rs reads SPEAKER_NAME at compile time via env!(); the dummy
+      # value satisfies the build and nothing is ever flashed here.
       - name: Provide dummy .env
         run: cp .env.example .env
 

@@ -22,6 +22,7 @@ This repo is a **template** for embedded Rust (Embassy) projects, structured for
 
 - `crates/` — capability crates: **application logic that works regardless of hardware**, one small chip-agnostic `no_std` library per capability (`blink`, `http-client`, ...). Only portable deps allowed (embassy-*, embedded-hal / embedded-nal-async traits). Never add `esp-*`/`stm32-*` here — if code needs one, it belongs in a board crate.
 - `boards/esp32/` — **board-specific logic**: self-contained binary crate (own `Cargo.lock`, `rust-toolchain.toml`, `.cargo/config.toml`). All hardware bring-up lives here, plus the concrete trait implementations that fill in the capability crates' seams so the firmware can actually be flashed. New chips get sibling directories.
+- `boards/esp32-a2dp/` — **std (ESP-IDF) board**: streams `crates/audio` to a Bluetooth speaker as an A2DP source. Bluetooth Classic only exists via the Bluedroid C stack inside ESP-IDF, so this board runs Rust `std` on ESP-IDF (target `xtensa-esp32-espidf`, `ldproxy` linker) — see `docs/decisions/0008`. First build downloads + compiles ESP-IDF (~1 GB, 10–20 min; cached under `~/.espressif` afterward). Rule of thumb: each board picks the smallest runtime that can do its job.
 - Root `Cargo.toml` — **virtual workspace for host-buildable crates only** (`members = ["crates/*"]`). Boards are `exclude`d (literal paths, not globs — list each new board). See `docs/decisions/0002`.
 - `docs/decisions/` — the ADRs described above.
 
@@ -33,11 +34,20 @@ cp .env.example .env   # first time only; fill in WiFi credentials
 cargo run --release    # builds, flashes via espflash, opens serial monitor
 ```
 
-Secrets live in `boards/esp32/.env` (gitignored, injected at compile time by `build.rs`). Never commit credentials.
+For the Bluetooth-speaker board (needs `cargo install ldproxy` once):
+
+```sh
+cd boards/esp32-a2dp
+cp .env.example .env   # fill in SPEAKER_NAME (the speaker's advertised BT name)
+cargo run --release    # put the speaker in pairing mode; melody plays on connect
+```
+
+Secrets live in each board's `.env` (gitignored, injected at compile time by `build.rs`). Never commit credentials.
 
 ## Testing pattern
 
 - New logic in `crates/` gets an inline `#[cfg(test)] mod tests` next to the code, run **on the host** from the repo root: `cargo test --workspace`. (Works despite `no_std` — the test binary links `std`; the libraries don't.)
+- Synchronous logic (e.g. `crates/audio` — pure sample math) tests directly, no MockDriver or future-polling needed; those tools are only for embassy-time-dependent async code.
 - Async code: no executor in tests. Poll futures manually (`core::pin::pin!` + `Waker::noop()`) and advance time with `embassy_time::MockDriver` (enabled via `[dev-dependencies]` only). `MockDriver` is a process-global clock — keep time-advancing assertions within one test fn. Template: the test module in `crates/blink/src/lib.rs`.
 - Hardware and network traits get hand-rolled fakes (`FakePin` in `crates/blink/src/lib.rs`; `FakeTcp`/`FakeDns` in `crates/http-client/src/lib.rs`), not a mocking crate. Network logic goes in generic cores bounded on `embedded-nal-async` traits (`get_status_with`), with dumb concrete wrappers at the edge — see `docs/decisions/0006`.
 - CI enforces a line-coverage floor on the workspace (`cargo llvm-cov --workspace --fail-under-lines N` in `.github/workflows/ci.yml`). N is **measured, rounded down to the nearest 5** — when a PR meaningfully raises coverage, ratchet N up in that same PR. Never lower it to make a PR pass.

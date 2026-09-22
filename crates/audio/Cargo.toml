@@ -1,0 +1,11 @@
+# A capability crate: PCM audio synthesis as pure math. It has ZERO
+# dependencies — not even embassy — because generating samples is synchronous
+# arithmetic: whoever plays the audio (a Bluetooth stack's data callback, an
+# I2S DMA refill, a host test) calls `fill()` whenever IT needs more samples,
+# so the caller owns all timing and this crate never waits on anything.
+# See docs/decisions/0008 for the Bluetooth feature this was built for.
+
+[package]
+name              = "audio"
+version.workspace = true
+edition.workspace = true

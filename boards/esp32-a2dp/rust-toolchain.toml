@@ -1,0 +1,5 @@
+# Same Espressif fork as boards/esp32 (Xtensa isn't in upstream rustc yet),
+# but this board builds for a different target: xtensa-esp32-espidf (std on
+# ESP-IDF) instead of xtensa-esp32-none-elf (bare metal). See ADR 0008.
+[toolchain]
+channel = "esp"

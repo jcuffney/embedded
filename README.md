@@ -20,9 +20,13 @@ crates/            Capability crates: application logic that works
                    (embassy-*, embedded-hal), never on a specific HAL.
   blink/           LED toggle logic.
   http-client/     Status-fetching HTTP client.
+  audio/           PCM tone/melody synthesis (pure math, zero deps).
 boards/esp32/      Everything ESP32-specific: hardware bring-up, WiFi
                    driver, toolchain + cargo config, flashing setup.
                    Self-contained crate with its own Cargo.lock.
+boards/esp32-a2dp/ ESP32 as a Bluetooth (A2DP) source streaming audio
+                   to a speaker. std-based on ESP-IDF — Bluetooth
+                   Classic only exists via the Bluedroid C stack.
 docs/decisions/    Short records of why things are the way they are.
                    Start here to understand the structure:
                      0001  why portable logic and boards are separate crates
@@ -32,6 +36,7 @@ docs/decisions/    Short records of why things are the way they are.
                      0005  how unit tests + the coverage floor work
                      0006  how the HTTP client is tested (trait seam)
                      0007  why rust-analyzer needs explicit config here
+                     0008  why the Bluetooth board is std (ESP-IDF)
 .vscode/           Editor config (VS Code and Cursor) so rust-analyzer
                    analyzes for the chip target instead of the host.
 CLAUDE.md          Instructions for AI-assisted sessions in this repo.
